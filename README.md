@@ -228,7 +228,7 @@ The following parameters are supported:
 | auto_increment | no | boolean | true | Whether or not to increment created servers. |
 | count | no | integer | 1 | The number of servers to create. |
 | name | **yes** | string | | The name of the server(s). |
-| image | **yes** | string | | The image UUID for creating the server. |
+| image | **yes**/ no | string | | The image UUID for creating the server. **REMARKS** Not required for updates. |
 | image_password | no | string | | Password set for the administrative user. |
 | ssh_keys | no | list | none | List of public SSH keys allowing access to the server. |
 | datacenter | no | string | none | The datacenter where the server is located. |
