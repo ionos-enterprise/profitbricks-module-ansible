@@ -40,6 +40,22 @@
           delay: 10
       with_items: "{{ profitbricks.machines }}"
 
+    - name: Update first machine with more CPU and less RAM
+      profitbricks:
+         datacenter: "{{ datacenter }}"
+         name: server01
+         auto_increment: true
+         cores: 2
+         ram: 1024
+         cpu_family: AMD_OPTERON
+         location: "{{ location }}"
+         wait: true
+         wait_timeout: "{{ timeout }}"
+         state: present
+      register: profitbricks_update
+
+    - debug: msg="{{profitbricks_update.machines}}"
+
     # - name: Add servers to servers host group
     #   add_host:
     #      hostname: "{{ item.properties.name }}"

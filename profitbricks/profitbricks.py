@@ -366,6 +366,42 @@ def _create_machine(module, profitbricks, datacenter, name):
         return server_response
 
 
+def _update_machine(module, profitbricks, datacenter_id, server_id):
+    cores = module.params.get('cores')
+    ram = module.params.get('ram')
+    cpu_family = module.params.get('cpu_family')
+    subscription_user = module.params.get('subscription_user')
+    subscription_password = module.params.get('subscription_password')
+    location = module.params.get('location')
+    wait = module.params.get('wait')
+    wait_timeout = module.params.get('wait_timeout')
+
+    try:
+        # create_server_response = profitbricks.update_server(
+            # datacenter_id=datacenter, server=s, name=name)
+
+        create_server_response = profitbricks.update_server(
+            datacenter_id=datacenter_id,
+            server_id=server_id,
+            cores=cores,
+            ram=ram,
+            cpu_family=cpu_family)
+
+        _wait_for_completion(profitbricks, create_server_response,
+                             wait_timeout, "update_virtual_machine")
+
+        server_response = profitbricks.get_server(
+            datacenter_id=datacenter_id,
+            server_id=create_server_response['id'],
+            depth=3
+        )
+    except Exception as e:
+        module.fail_json(msg="failed to update machine: %s" % str(e))
+    else:
+        server_response['nic'] = server_response['entities']['nics']['items'][0]
+        return server_response
+
+
 def _startstop_machine(module, profitbricks, datacenter_id, server_id):
     state = module.params.get('state')
 
@@ -479,6 +515,63 @@ def create_virtual_machine(module, profitbricks):
         'failed': failed,
         'machines': virtual_machines,
         'action': 'create',
+        'instance_ids': {
+            'instances': [i['id'] for i in virtual_machines],
+        }
+    }
+
+    return results
+
+
+def update_virtual_machine(module, profitbricks):
+    """
+    Updates a virtual machine
+
+    module : AnsibleModule object
+    profitbricks: authenticated profitbricks object
+
+    Returns:
+        True if a virtual machine was updated, false otherwise
+    """
+    datacenter = module.params.get('datacenter')
+    name = module.params.get('name')
+    wait_timeout = module.params.get('wait_timeout')
+    failed = True
+    datacenter_found = False
+
+    virtual_machines = []
+
+    # Locate UUID for datacenter if referenced by name.
+    datacenter_list = profitbricks.list_datacenters()
+    datacenter_id = _get_datacenter_id(datacenter_list, datacenter)
+    if datacenter_id:
+        datacenter_found = True
+
+    if not datacenter_found:
+        datacenter_response = _create_datacenter(module, profitbricks)
+        datacenter_id = datacenter_response['id']
+
+        _wait_for_completion(profitbricks, datacenter_response,
+                             wait_timeout, "update_virtual_machine")
+
+    names = [name]
+
+    # Prefetch a list of servers for later comparison.
+    server_list = profitbricks.list_servers(datacenter_id)
+    for name in names:
+        # Skip server creation if the server already exists.
+        server_id = _get_server_id(server_list, name)
+
+        create_response = _update_machine(module, profitbricks, str(datacenter_id), server_id)
+
+        virtual_machines.append(create_response)
+
+    failed = False
+
+    results = {
+        'failed': failed,
+        'machines': virtual_machines,
+        'action': 'update',
         'instance_ids': {
             'instances': [i['id'] for i in virtual_machines],
         }
@@ -707,14 +800,27 @@ def main():
     elif state == 'present':
         if not module.params.get('name'):
             module.fail_json(msg='name parameter is required for new instance')
-        if not module.params.get('image'):
-            module.fail_json(msg='image parameter is required for new instance')
 
-        try:
-            (machine_dict_array) = create_virtual_machine(module, profitbricks)
-            module.exit_json(**machine_dict_array)
-        except Exception as e:
-            module.fail_json(msg='failed to set instance state: %s' % str(e))
+        datacenter_list = profitbricks.list_datacenters()
+        datacenter_id = _get_datacenter_id(datacenter_list, module.params.get('datacenter'))
+        server_list = profitbricks.list_servers(datacenter_id)
+        if not _get_server_id(server_list, module.params.get('name')):
+            # create
+            if not module.params.get('image'):
+                module.fail_json(msg='image parameter is required for new instance')
+
+            try:
+                (machine_dict_array) = create_virtual_machine(module, profitbricks)
+                module.exit_json(**machine_dict_array)
+            except Exception as e:
+                module.fail_json(msg='failed to set instance state: %s' % str(e))
+        else:
+            # update
+            try:
+                (machine_dict_array) = update_virtual_machine(module, profitbricks)
+                module.exit_json(**machine_dict_array)
+            except Exception as e:
+                module.fail_json(msg='failed to set instance state: %s' % str(e))
 
 from ansible import __version__
 from ansible.module_utils.basic import *
