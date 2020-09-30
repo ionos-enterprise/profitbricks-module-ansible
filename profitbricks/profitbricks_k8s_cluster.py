@@ -23,7 +23,7 @@ EXAMPLES = '''
   profitbricks_k8s_cluster:
     k8s_cluster_id: "89a5aeb0-d6c1-4cef-8f6b-2b9866d85850"
     maintenance_window:
-      day: 'Tuesday'
+      day_of_the_week: 'Tuesday'
       time: '13:03:00'
     k8s_version: 1.17.8
     state: update
@@ -118,7 +118,7 @@ def update_k8s_cluster(module, client):
     maintenance = module.params.get('maintenance_window')
 
     maintenance_window = dict(maintenance)
-    maintenance_window['dayOfTheWeek'] = maintenance_window.pop('day')
+    maintenance_window['dayOfTheWeek'] = maintenance_window.pop('day_of_the_week')
 
     properties = {
         'name': cluster_name,
@@ -157,7 +157,7 @@ def main():
             k8s_version=dict(type='str'),
             maintenance_window=dict(
                 type='dict',
-                day=dict(type='str'),
+                day_of_the_week=dict(type='str'),
                 time=dict(type='str')
             ),
             api_url=dict(type='str', default=None),

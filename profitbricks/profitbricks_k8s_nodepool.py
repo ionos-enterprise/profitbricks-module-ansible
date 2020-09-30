@@ -32,7 +32,7 @@ EXAMPLES = '''
     node_count: 1
     cores_count: "1"
     maintenance_window:
-      day: 'Tuesday'
+      day_of_the_week: 'Tuesday'
       time: '13:03:00'
     auto_scaling:
       min_node_count: 1
@@ -76,7 +76,9 @@ def _wait_for_completion(client, promise, wait_timeout, msg):
 
 def create_k8s_cluster_nodepool(module, client):
     k8s_cluster_id = module.params.get('k8s_cluster_id')
-    cluster_name = module.params.get('cluster_name')
+    k8s_version = module.params.get('k8s_version')
+    nodepool_name = module.params.get('nodepool_name')
+    lan_ids = module.params.get('lan_ids')
     datacenter_id = module.params.get('datacenter_id')
     node_count = module.params.get('node_count')
     cpu_family = module.params.get('cpu_family')
@@ -85,11 +87,36 @@ def create_k8s_cluster_nodepool(module, client):
     availability_zone = module.params.get('availability_zone')
     storage_type = module.params.get('storage_type')
     storage_size = module.params.get('storage_size')
+    maintenance_day = module.params.get('maintenance_window')['day_of_the_week']
+    maintenance_time = module.params.get('maintenance_window')['time']
+    min_node_count = module.params.get('auto_scaling')['min_node_count']
+    max_node_count = module.params.get('auto_scaling')['max_node_count']
+    labels = module.params.get('labels')
+    annotations = module.params.get('annotations')
+
+    auto_scaling = {
+        'minNodeCount': min_node_count,
+        'maxNodeCount': max_node_count
+    }
+
+    maintenance_window = {
+        'dayOfTheWeek': maintenance_day,
+        'time': maintenance_time
+    }
 
     try:
-        k8s_response = client.create_k8s_cluster_nodepool(k8s_cluster_id, cluster_name, datacenter_id, node_count,
-                                                          cpu_family, cores_count, ram_size, availability_zone,
-                                                          storage_type, storage_size)
+        k8s_response = client.create_k8s_cluster_nodepool(
+            k8s_cluster_id,
+            nodepool_name, datacenter_id,
+            node_count, cpu_family,
+            cores_count, ram_size,
+            availability_zone,
+            storage_type, storage_size,
+            k8s_version=k8s_version,
+            maintenance_window=maintenance_window,
+            auto_scaling=auto_scaling,
+            lan_ids=lan_ids, labels=labels,
+            annotations=annotations)
 
         if module.params.get('wait'):
             client.wait_for(
@@ -143,11 +170,11 @@ def update_k8s_cluster_nodepool(module, client):
     k8s_cluster_id = module.params.get('k8s_cluster_id')
     nodepool_id = module.params.get('nodepool_id')
     node_count = module.params.get('node_count')
-    maintenance_day = module.params.get('maintenance_window')['day']
+    maintenance_day = module.params.get('maintenance_window')['day_of_the_week']
     maintenance_time = module.params.get('maintenance_window')['time']
     min_node_count = module.params.get('auto_scaling')['min_node_count']
     max_node_count = module.params.get('auto_scaling')['max_node_count']
-
+    lan_ids = module.params.get('lan_ids')
     auto_scaling = {
         'minNodeCount': min_node_count,
         'maxNodeCount': max_node_count
@@ -158,12 +185,18 @@ def update_k8s_cluster_nodepool(module, client):
         'time': maintenance_time
     }
 
+    if not node_count:
+        nodepool = client.get_k8s_cluster_nodepool(k8s_cluster_id, nodepool_id)
+        node_count = nodepool['properties']['nodeCount']
+
     if module.check_mode:
         module.exit_json(changed=True)
     try:
         client.update_k8s_cluster_nodepool(k8s_cluster_id, nodepool_id,
                                            node_count,
-                                           maintenance_window, auto_scaling)
+                                           maintenance_window=maintenance_window,
+                                           auto_scaling=auto_scaling,
+                                           lan_ids=lan_ids)
 
         changed = True
 
@@ -177,10 +210,12 @@ def update_k8s_cluster_nodepool(module, client):
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            cluster_name=dict(type='str'),
+            nodepool_name=dict(type='str'),
             k8s_cluster_id=dict(type='str'),
+            k8s_version=dict(type='str'),
             nodepool_id=dict(type='str'),
             datacenter_id=dict(type='str'),
+            lan_ids=dict(type='list', elements='int'),
             node_count=dict(type='int'),
             cpu_family=dict(type='str'),
             cores_count=dict(type='str'),
@@ -190,9 +225,11 @@ def main():
             storage_size=dict(type='str'),
             maintenance_window=dict(
                 type='dict',
-                day=dict(type='int'),
+                day_of_the_week=dict(type='int'),
                 time=dict(type='int')
             ),
+            labels=dict(type='dict'),
+            annotations=dict(type='dict'),
             auto_scaling=dict(
                 type='dict',
                 min_node_count=dict(type='str'),
@@ -240,9 +277,9 @@ def main():
     state = module.params.get('state')
 
     if state == 'present':
-        error_message = "%s parameter is required updating a k8s node pool"
-        if not module.params.get('cluster_name'):
-            module.fail_json(msg=error_message % 'cluster_name')
+        error_message = "%s parameter is required updating a k8s nodepool"
+        if not module.params.get('nodepool_name'):
+            module.fail_json(msg=error_message % 'nodepool_name')
         if not module.params.get('k8s_cluster_id'):
             module.fail_json(msg=error_message % 'k8s_cluster_id')
         if not module.params.get('datacenter_id'):
@@ -284,8 +321,6 @@ def main():
             module.fail_json(msg='k8s_cluster_id parameter is required updating a nodepool.')
         if not module.params.get('nodepool_id'):
             module.fail_json(msg='nodepool_id parameter is required updating a nodepool.')
-        if not module.params.get('node_count'):
-            module.fail_json(msg='node_count parameter is required updating a nodepool.')
         try:
             (changed) = update_k8s_cluster_nodepool(module, ionosenterprise)
             module.exit_json(

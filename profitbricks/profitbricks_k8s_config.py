@@ -9,7 +9,6 @@ EXAMPLES = '''
   profitbricks_k8s_config:
     k8s_cluster_id: "ed67d8b3-63c2-4abe-9bf0-073cee7739c9"
     config_file: 'config.yaml'
-    state: present
 '''
 
 HAS_SDK = True
@@ -36,7 +35,11 @@ def get_config(module, client):
     except Exception as e:
         module.fail_json(msg="failed to get the k8s cluster config: %s" % to_native(e))
 
-    return changed
+    return {
+        'failed': False,
+        'changed': True,
+        'config': response
+    }
 
 
 def main():
@@ -87,8 +90,8 @@ def main():
 
     if state == 'present':
         try:
-            (changed) = get_config(module, ionosenterprise)
-            module.exit_json(changed=changed)
+            (response) = get_config(module, ionosenterprise)
+            module.exit_json(response=response)
         except Exception as e:
             module.fail_json(msg='failed to get the k8s cluster config: %s' % to_native(e))
 

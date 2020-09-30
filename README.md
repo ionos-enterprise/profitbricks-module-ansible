@@ -1,6 +1,6 @@
 # Ansible Module
 
-Version: **profitbricks-module-ansible v2.0.6**
+Version: **profitbricks-module-ansible v2.1.0**
 
 API Version: **ProfitBricks Cloud API v5**
 
@@ -29,12 +29,12 @@ API Version: **ProfitBricks Cloud API v5**
   - [profitbricks_user](#profitbricks_user)
   - [profitbricks_group](#profitbricks_group)
   - [profitbricks_share](#profitbricks_share)
-  - [profitbricks_pcc](#profitbricks_pcc)
   - [profitbricks_s3key](#profitbricks_s3key)
   - [profitbricks_k8s_cluster](#profitbricks_k8s_cluster)
   - [profitbricks_k8s_nodepool](#profitbricks_k8s_nodepool)
   - [profitbricks_k8s_config](#profitbricks_k8s_config)
   - [profitbricks_backupunit](#profibricks_backupunit)
+  - [profitbricks_pcc](#profitbricks_pcc)
 - [Examples](#examples)
 - [Support](#support)
 - [Testing](#testing)
@@ -328,6 +328,7 @@ The following parameters are supported:
 | password     |    no    | string  |         | The ProfitBricks password. Overrides the PROFITBRICKS_PASSWORD environement variable.                  |
 | wait         |    no    | boolean | true    | Wait for the operation to complete before continuing.                                                  |
 | wait_timeout |    no    | integer | 600     | The number of seconds until the wait ends.                                                             |
+| pcc_id       |    no    | string  |         | The ID of the private cross connect linked to the LAN.                                                 |
 | state        |    no    | string  | present | Indicate desired state of the resource: **present**, absent, update                                    |
 
 ### profitbricks_nic
@@ -829,7 +830,7 @@ The following parameters are supported:
 | cluster_name       | **yes**/no | string  |         | The name of the cluster. Required only for state = 'present'                                                           |
 | k8s_cluster_id     | **yes**    | string  |         | The ID of the cluster. Required only for state = 'update' or state = 'absent'               |
 | k8s_version        |    no      | string  |         | The kubernetes version in which the cluster is running.                                                  |
-| maintenance_window |    no      |  dict   |         | The day and time for the maintenance. Contains 'dayOfTheWeek' and 'time'.                                                          |
+| maintenance_window |    no      |  dict   |         | The day and time for the maintenance. Contains 'dayOfTheWeek' (e.g: "Monday", "Tuesday", "Wednesday" etc.) and 'time' (Accepted formats are: HH:mm:ss; HH:mm:ss"Z"; HH:mm:ssZ). The time may vary by 15 minutes.                                                          |
 
 
 
@@ -878,7 +879,7 @@ The following parameters are supported:
 
 | Name               | Required   | Type    | Default | Description                                                                                                                                          |
 | ------------------ | :--------: | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| nodepool_name      | **yes**    | string  |         | The name of the nodepool. Required only for state = 'present'                                                                                        |
+| name      | **yes**    | string  |         | The name of the nodepool. Required only for state = 'present'                                                                                        |
 | k8s_cluster_id     | **yes**    | string  |         | The ID of the cluster.                                                                                                                               |
 | nodepool_id        | **yes**/no | string  |         | The ID of the nodepool. Required for state = 'update' or state = 'absent'                                                                            |
 | datacenter_id      | **yes**/no | string  |         | The ID of the datacenter. Required only for state = 'present'                                                                                        |
@@ -889,8 +890,11 @@ The following parameters are supported:
 | availability_zone  | **yes**/no | string  |         | The availability zone in which the server should exist. Required only for state = 'present'                                                          |
 | storage_type       | **yes**/no | string  |         | Hardware type of the volume. Required only for state = 'present'                                                                                     |
 | storage_size       | **yes**/no | string  |         | The size of the volume in GB. The size should be greater than 10GB. Required only for state = 'present'                                              |
-| maintenance_window |    no      |  dict   |         | The day and time for the maintenance. Contains 'dayOfTheWeek' and 'time'.                                                                            |
+| maintenance_window |    no      |  dict   |         | The day and time for the maintenance. Contains 'dayOfTheWeek' (e.g: "Monday", "Tuesday", "Wednesday" etc.) and 'time' (Accepted formats are: HH:mm:ss; HH:mm:ss"Z"; HH:mm:ssZ). The time may vary by 15 minutes.                                                          |
 | auto_scaling       |    no      |  dict   |         | The minimum and maximum number of worker nodes that the managed node group can scale in. Contains 'min_node_count' and 'max_node_count'.             |
+| lan_ids            |    no      |  list   |         | Array of additional LANs attached to worker nodes             |
+| labels             |    no      |  dict   |         | Map of labels attached to node pool             |
+| annotations        |    no      |  dict   |         | Map of annotations attached to node pool             |
 
 
 
