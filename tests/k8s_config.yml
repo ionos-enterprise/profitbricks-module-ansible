@@ -1,0 +1,15 @@
+- hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Get k8s config
+      profitbricks_k8s_config:
+        k8s_cluster_id: "e71ed6d9-001a-4a03-a778-527bc04f301a"
+        config_file: 'config.yaml'
+      register: config
+    - debug:
+      msg: "Config: {{ config }}"
