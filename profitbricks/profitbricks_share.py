@@ -70,7 +70,7 @@ options:
 
 requirements:
     - "python >= 2.6"
-    - "ionosenterprise >= 5.2.0"
+    - "ionosenterprise >= 5.4.0"
 author:
     - Nurfet Becirevic (@nurfet-becirevic)
     - Ethan Devenport (@edevenport)

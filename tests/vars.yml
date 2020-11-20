@@ -1,10 +1,10 @@
-name: Ansible Test
-datacenter: Ansible Test
+name: ansible-test
+datacenter: ansible-test
 description: Ansible test description
-server: Ansible Test
+server: ansible-test
 nic: ansible test
 lan: ansible test
-location: us/las
+location: de/fra
 image: 58018ea3-d39b-11ea-9aec-0242ac120003
 password: qq6mdvirWwj1dsdXjcpp
 updated_password: fjee83jkw940djcer

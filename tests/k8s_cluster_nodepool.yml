@@ -6,42 +6,48 @@
     - vars.yml
 
   tasks:
+    - name: Create datacenter
+      profitbricks_datacenter:
+        name: "{{ name }}"
+        description: "{{ description }}"
+        location: "{{ location }}"
+      register: datacenter
+
+    - name: Create k8s cluster
+      profitbricks_k8s_cluster:
+        cluster_name: "{{ name }}"
+        maintenance_window:
+          day_of_the_week: "Wednesday"
+          time: "12:02:00"
+        k8s_version: 1.18.9
+      register: cluster
+
     - name: Create k8s cluster nodepool
       profitbricks_k8s_nodepool:
-        nodepool_name: "my-nodepool"
-        k8s_cluster_id: "a0a65f51-4d3c-438c-9543-39a3d7668af3"
-        datacenter_id: "4d495548-e330-434d-83a9-251bfa645875"
+        nodepool_name: "{{ name }}"
+        k8s_cluster_id:  "{{ cluster.k8s_id }}"
+        datacenter_id: "{{ datacenter.datacenter_id }}"
         node_count: "1"
         cpu_family: "AMD_OPTERON"
         cores_count: "1"
         ram_size: "2048"
         availability_zone: "AUTO"
-        maintenance_window:
-          day_of_the_week: "Monday"
-          time: "12:00:00"
-        auto_scaling:
-            min_node_count: 1
-            max_node_count: 3
-        lan_ids:
-          - '6'
-          - '7'
-          - '8'
-        labels:
-          "lu1": "vu1"
-          "lu2": "vu2"
-        annotations:
-          "au1": "vau1"
-          "au2": "vau2"
         storage_type: "SSD"
         storage_size: "100"
-      register: nodepool
+        public_ips:
+        - 185.48.117.26
+        - 185.132.45.33
+      register: result
+
+    - name: Debug - Show nodepool
+      debug:
+         msg: "{{ result }}"
 
     - name: Update k8s cluster nodepool
       profitbricks_k8s_nodepool:
-        nodepool_name: "{{ name }}"
-        k8s_cluster_id: "a0a65f51-4d3c-438c-9543-39a3d7668af3"
-        datacenter_id: "4d495548-e330-434d-83a9-251bfa645875"
-        nodepool_id: "{{ nodepool.k8s_nodepool_id }}"
+        k8s_cluster_id: "{{ cluster.k8s_id }}"
+        datacenter_id: "{{ datacenter.datacenter_id }}"
+        nodepool_id: "{{ result.k8s_nodepool_id }}"
         node_count: "1"
         cpu_family: "AMD_OPTERON"
         cores_count: "1"
@@ -49,19 +55,25 @@
         availability_zone: "AUTO"
         storage_type: "SSD"
         storage_size: "100"
-        lan_ids:
-          - 7
-          - 6
-        maintenance_window:
-          day_of_the_week: "Tuesday"
-          time: "15:00:00"
-        auto_scaling:
-          min_node_count: 1
-          max_node_count: 4
+        public_ips:
+          - 185.132.45.40
+          - 217.160.200.52
         state: update
 
     - name: Delete k8s cluster nodepool
       profitbricks_k8s_nodepool:
-        k8s_cluster_id: "e71ed6d9-001a-4a03-a778-527bc04f301a"
-        nodepool_id: "{{ nodepool.k8s_nodepool_id }}"
+        k8s_cluster_id: "{{ cluster.k8s_id }}"
+        nodepool_id: "{{ result.k8s_nodepool_id }}"
+        wait: true
         state: absent
+
+    - name: Delete k8s cluster
+      profitbricks_k8s_cluster:
+        k8s_cluster_id:  "{{ cluster.k8s_id }}"
+        state: absent
+
+    - name: Remove datacenter
+      profitbricks_datacenter:
+         id: "{{ datacenter.datacenter_id }}"
+         name: "{{ name }}"
+         state: absent

@@ -60,12 +60,25 @@ def _wait_for_completion(client, promise, wait_timeout, msg):
 def create_k8s_cluster(module, client):
     cluster_name = module.params.get('cluster_name')
 
+    should_change = True
+    cluster = None
+    cluster_list = client.list_k8s_clusters(depth=2)
+    for c in cluster_list['items']:
+        if c['properties']['name'] == cluster_name:
+            cluster = c
+            should_change = False
+
+    if not should_change:
+        return {
+            'k8s_id': cluster['id'],
+            'changed': False
+        }
+
     try:
         k8s_response = client.create_k8s_cluster(cluster_name)
-
         if module.params.get('wait'):
             client.wait_for(
-                fn_request=lambda: client.list_k8s_clusters(),
+                fn_request=lambda: client.list_k8s_clusters(depth=2),
                 fn_check=lambda r: list(filter(
                     lambda e: e['properties']['name'] == cluster_name,
                     r['items']

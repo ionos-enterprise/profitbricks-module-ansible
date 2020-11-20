@@ -1,6 +1,6 @@
 # Ansible Module
 
-Version: **profitbricks-module-ansible v2.1.0**
+Version: **profitbricks-module-ansible v2.1.1**
 
 API Version: **ProfitBricks Cloud API v5**
 
@@ -870,6 +870,9 @@ The following parameters are supported:
         auto_scaling:
           min_node_count: 1
           max_node_count: 3
+          public_ips:
+            - 185.132.45.40
+            - 217.160.200.52
         state: update
 
 
@@ -895,6 +898,7 @@ The following parameters are supported:
 | lan_ids            |    no      |  list   |         | Array of additional LANs attached to worker nodes             |
 | labels             |    no      |  dict   |         | Map of labels attached to node pool             |
 | annotations        |    no      |  dict   |         | Map of annotations attached to node pool             |
+| public_ips         |    no      |  list   |         | Optional array of reserved public IP addresses to be used by the nodes. IPs must be from same location as the data center used for the node pool. The array must contain one extra IP than maximum number of nodes could be. (`nodeCount+1` if fixed node amount or `maxNodeCount+1` if auto scaling is used). The extra provided IP Will be used during rebuilding of nodes.             |
 
 
 
