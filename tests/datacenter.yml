@@ -10,7 +10,7 @@
       profitbricks_datacenter:
         name: "{{ name }}"
         description: "{{ description }}"
-        location: us/las
+        location: "{{ location }}"
 
     - name: Update datacenter
       profitbricks_datacenter:

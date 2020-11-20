@@ -87,22 +87,38 @@ def create_k8s_cluster_nodepool(module, client):
     availability_zone = module.params.get('availability_zone')
     storage_type = module.params.get('storage_type')
     storage_size = module.params.get('storage_size')
-    maintenance_day = module.params.get('maintenance_window')['day_of_the_week']
-    maintenance_time = module.params.get('maintenance_window')['time']
-    min_node_count = module.params.get('auto_scaling')['min_node_count']
-    max_node_count = module.params.get('auto_scaling')['max_node_count']
+    maintenance = module.params.get('maintenance_window')
+    auto_scaling_dict = module.params.get('auto_scaling')
     labels = module.params.get('labels')
     annotations = module.params.get('annotations')
+    public_ips = module.params.get('public_ips')
 
-    auto_scaling = {
-        'minNodeCount': min_node_count,
-        'maxNodeCount': max_node_count
-    }
+    auto_scaling = None
+    if auto_scaling_dict:
+        auto_scaling = dict(auto_scaling_dict)
+        auto_scaling['minNodeCount'] = auto_scaling.pop('min_node_count')
+        auto_scaling['maxNodeCount'] = auto_scaling.pop('max_node_count')
 
-    maintenance_window = {
-        'dayOfTheWeek': maintenance_day,
-        'time': maintenance_time
-    }
+    maintenance_window = None
+    if maintenance:
+        maintenance_window = dict(maintenance)
+        maintenance_window['dayOfTheWeek'] = maintenance_window.pop('day_of_the_week')
+
+    should_change = True
+    nodepool = None
+    nodepool_list = client.list_k8s_cluster_nodepools(k8s_cluster_id=k8s_cluster_id, depth=2)
+
+    for n in nodepool_list['items']:
+        if n['properties']['name'] == nodepool_name:
+            nodepool = n
+            should_change = False
+
+    if not should_change:
+        results = {
+            'k8s_nodepool_id': nodepool['id'],
+            'changed': True
+        }
+        return results
 
     try:
         k8s_response = client.create_k8s_cluster_nodepool(
@@ -116,13 +132,13 @@ def create_k8s_cluster_nodepool(module, client):
             maintenance_window=maintenance_window,
             auto_scaling=auto_scaling,
             lan_ids=lan_ids, labels=labels,
-            annotations=annotations)
+            annotations=annotations, public_ips=public_ips)
 
         if module.params.get('wait'):
             client.wait_for(
-                fn_request=lambda: client.list_k8s_cluster_nodepools(k8s_cluster_id),
+                fn_request=lambda: client.list_k8s_cluster_nodepools(k8s_cluster_id, depth=2),
                 fn_check=lambda r: list(filter(
-                    lambda e: e['properties']['name'] == cluster_name,
+                    lambda e: e['properties']['name'] == nodepool_name,
                     r['items']
                 ))[0]['metadata']['state'] == 'ACTIVE',
                 console_print='.',
@@ -142,7 +158,6 @@ def create_k8s_cluster_nodepool(module, client):
 def delete_k8s_cluster_nodepool(module, client):
     k8s_cluster_id = module.params.get('k8s_cluster_id')
     nodepool_id = module.params.get('nodepool_id')
-    cluster_name = module.params.get('cluster_name')
 
     changed = False
 
@@ -152,7 +167,7 @@ def delete_k8s_cluster_nodepool(module, client):
             client.wait_for(
                 fn_request=lambda: client.list_k8s_cluster_nodepools(k8s_cluster_id),
                 fn_check=lambda r: len(list(filter(
-                    lambda e: e['properties']['name'] == cluster_name,
+                    lambda e: e['id'] == nodepool_id,
                     r['items']
                 ))) < 1,
                 console_print='.',
@@ -170,23 +185,24 @@ def update_k8s_cluster_nodepool(module, client):
     k8s_cluster_id = module.params.get('k8s_cluster_id')
     nodepool_id = module.params.get('nodepool_id')
     node_count = module.params.get('node_count')
-    maintenance_day = module.params.get('maintenance_window')['day_of_the_week']
-    maintenance_time = module.params.get('maintenance_window')['time']
-    min_node_count = module.params.get('auto_scaling')['min_node_count']
-    max_node_count = module.params.get('auto_scaling')['max_node_count']
+    maintenance = module.params.get('maintenance_window')
+    auto_scaling_dict = module.params.get('auto_scaling')
     lan_ids = module.params.get('lan_ids')
-    auto_scaling = {
-        'minNodeCount': min_node_count,
-        'maxNodeCount': max_node_count
-    }
+    public_ips = module.params.get('public_ips')
 
-    maintenance_window = {
-        'dayOfTheWeek': maintenance_day,
-        'time': maintenance_time
-    }
+    auto_scaling = None
+    if auto_scaling_dict:
+        auto_scaling = dict(auto_scaling_dict)
+        auto_scaling['minNodeCount'] = auto_scaling.pop('min_node_count')
+        auto_scaling['maxNodeCount'] = auto_scaling.pop('max_node_count')
 
+    maintenance_window = None
+    if maintenance:
+        maintenance_window = dict(maintenance)
+        maintenance_window['dayOfTheWeek'] = maintenance_window.pop('day_of_the_week')
+
+    nodepool = client.get_k8s_cluster_nodepool(k8s_cluster_id, nodepool_id)
     if not node_count:
-        nodepool = client.get_k8s_cluster_nodepool(k8s_cluster_id, nodepool_id)
         node_count = nodepool['properties']['nodeCount']
 
     if module.check_mode:
@@ -196,7 +212,17 @@ def update_k8s_cluster_nodepool(module, client):
                                            node_count,
                                            maintenance_window=maintenance_window,
                                            auto_scaling=auto_scaling,
-                                           lan_ids=lan_ids)
+                                           lan_ids=lan_ids, public_ips=public_ips)
+
+        client.wait_for(
+            fn_request=lambda: client.list_k8s_cluster_nodepools(k8s_cluster_id, depth=2),
+            fn_check=lambda r: list(filter(
+                lambda e: e['properties']['name'] == nodepool['properties']['name'],
+                r['items']
+            ))[0]['metadata']['state'] == 'ACTIVE',
+            console_print='.',
+            scaleup=10000
+        )
 
         changed = True
 
@@ -223,6 +249,7 @@ def main():
             availability_zone=dict(type='str'),
             storage_type=dict(type='str'),
             storage_size=dict(type='str'),
+            public_ips=dict(type='list', elements='str'),
             maintenance_window=dict(
                 type='dict',
                 day_of_the_week=dict(type='int'),
