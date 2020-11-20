@@ -303,6 +303,7 @@ def main():
         argument_spec=dict(
             datacenter=dict(type='str', required=True),
             name=dict(type='str'),
+            pcc_id=dict(type='str'),
             public=dict(type='bool', default=True),
             ip_failover=dict(type='dict', default=dict()),
             api_url=dict(type='str', default=None),
