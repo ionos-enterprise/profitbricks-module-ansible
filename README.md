@@ -4,6 +4,12 @@ Version: **profitbricks-module-ansible v2.1.1**
 
 API Version: **ProfitBricks Cloud API v5**
 
+
+## Deprecated
+
+This module is now deprecated and we will end support on 30th June 2021. Please use https://galaxy.ansible.com/ionoscloudsdk/ionoscloud.
+
+
 ## Table of Contents
 
 - [Description](#description)
