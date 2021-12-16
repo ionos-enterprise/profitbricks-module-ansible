@@ -1,3 +1,8 @@
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+# DEPRECATED
+
+This is no longer supported, please consider using [IONOS Cloud Module Ansible](https://github.com/ionos-cloud/module-ansible) instead.
+
 # Ansible Module
 
 Version: **profitbricks-module-ansible v2.1.2**
